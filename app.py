@@ -1,9 +1,14 @@
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
-import datetime # Für Datumseingaben
+import datetime
+import os # Neu: Für Umgebungsvariablen
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///antraege.db' # SQLite Datenbankdatei
+
+# Datenbank-URI von Umgebungsvariable lesen (für Render)
+# Fallback auf SQLite für lokale Entwicklung
+# Render wird DATABASE_URL setzen
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///antraege.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -21,9 +26,20 @@ class Antrag(db.Model):
     def __repr__(self):
         return f'<Antrag {self.id}: {self.titel}>'
 
-# Beim ersten Start der App die Datenbanktabellen erstellen
-with app.app_context():
-    db.create_all()
+# HINWEIS: db.create_all() sollte auf Render einmalig ausgeführt werden.
+# Du kannst dies auf verschiedene Arten tun:
+# 1. Manuell über die Render Shell (empfohlen für den Anfang).
+# 2. In deinem Startskript, aber nur, wenn die DB noch nicht existiert.
+# Für einfache Apps für den Start lassen wir es so, wie es ist. Render wird beim ersten Start der App die Tabelle erstellen.
+# In der Produktivumgebung ist das hier nicht optimal, da db.create_all() nur bei existierender DB-Verbindung funktioniert.
+# Mit app.app_context(): db.create_all() ist nur lokal sinnvoll.
+# Für Render besser: Manuell über die Shell ausführen oder ein Alembic-Migrationswerkzeug verwenden.
+# Für den Testzweck können wir es lassen und hoffen, dass es beim ersten Start klappt.
+# Eine bessere Lösung ist eine Migrationsdatenbank (z.B. Alembic) oder ein Shell-Befehl auf Render.
+# Wir werden eine Migrationsmethode über die Render Shell besprechen.
+
+
+# ... Rest deiner Flask-Routen ...
 
 @app.route('/')
 def index():
@@ -114,4 +130,7 @@ def delete_antrag(antrag_id):
     return redirect(url_for('list_antraege'))
 
 if __name__ == '__main__':
-    app.run(debug=True) # debug=True für Entwicklung, schaltet automatisch bei Änderungen neu
+    # Lokaler Start: Hier db.create_all() ausführen
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)
