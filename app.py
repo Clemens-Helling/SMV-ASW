@@ -1,16 +1,21 @@
 from flask import Flask, render_template, request, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 import datetime
-import os # Neu: Für Umgebungsvariablen
+import os
 
 app = Flask(__name__)
 
 # Datenbank-URI von Umgebungsvariable lesen (für Render)
 # Fallback auf SQLite für lokale Entwicklung
-# Render wird DATABASE_URL setzen
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///antraege.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+# WICHTIG: Erstelle die Datenbanktabellen beim Start der App, wenn sie nicht existieren.
+# Dies ist eine einfache Methode, wenn der Zugriff auf die Shell nicht möglich ist.
+# db.create_all() ist idempotent und erstellt Tabellen nur, wenn sie nicht existieren.
+with app.app_context():
+    db.create_all()
 
 # Definition des Datenbankmodells (Entspricht einer Tabelle in der DB)
 class Antrag(db.Model):
@@ -20,26 +25,10 @@ class Antrag(db.Model):
     datum = db.Column(db.Date, nullable=False, default=datetime.date.today)
     beschluss = db.Column(db.String(50), default='offen') # z.B. offen, angenommen, abgelehnt, vertagt
     status = db.Column(db.String(50), default='offen')   # z.B. offen, in Bearbeitung, abgeschlossen
-    # Optional: Notizen, Begründung etc.
     notizen = db.Column(db.Text, nullable=True)
 
     def __repr__(self):
         return f'<Antrag {self.id}: {self.titel}>'
-
-# HINWEIS: db.create_all() sollte auf Render einmalig ausgeführt werden.
-# Du kannst dies auf verschiedene Arten tun:
-# 1. Manuell über die Render Shell (empfohlen für den Anfang).
-# 2. In deinem Startskript, aber nur, wenn die DB noch nicht existiert.
-# Für einfache Apps für den Start lassen wir es so, wie es ist. Render wird beim ersten Start der App die Tabelle erstellen.
-# In der Produktivumgebung ist das hier nicht optimal, da db.create_all() nur bei existierender DB-Verbindung funktioniert.
-# Mit app.app_context(): db.create_all() ist nur lokal sinnvoll.
-# Für Render besser: Manuell über die Shell ausführen oder ein Alembic-Migrationswerkzeug verwenden.
-# Für den Testzweck können wir es lassen und hoffen, dass es beim ersten Start klappt.
-# Eine bessere Lösung ist eine Migrationsdatenbank (z.B. Alembic) oder ein Shell-Befehl auf Render.
-# Wir werden eine Migrationsmethode über die Render Shell besprechen.
-
-
-# ... Rest deiner Flask-Routen ...
 
 @app.route('/')
 def index():
@@ -130,7 +119,6 @@ def delete_antrag(antrag_id):
     return redirect(url_for('list_antraege'))
 
 if __name__ == '__main__':
-    # Lokaler Start: Hier db.create_all() ausführen
-    with app.app_context():
-        db.create_all()
+    # Lokaler Start: Die Datenbanktabellen werden erstellt, wenn sie nicht existieren.
+    # Für Render wird dieser Block nicht direkt ausgeführt, aber der 'with app.app_context(): db.create_all()' oben schon.
     app.run(debug=True)
