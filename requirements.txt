@@ -1,0 +1,4 @@
+Flask
+Flask-SQLAlchemy
+gunicorn
+psycopg2-binary
