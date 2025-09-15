@@ -1,5 +1,5 @@
 // Konfiguration
-const API_BASE_URL = 'http://127.0.0.1:8000'; // Passe diese URL bei Bedarf an
+const API_BASE_URL = 'https://smv-antrage.onrender.com/'; // Passe diese URL bei Bedarf an
 
 // DOM-Elemente
 const views = document.querySelectorAll('.view');
