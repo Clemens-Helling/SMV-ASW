@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMV Antragssystem</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <header>
+        <nav>
+            <h1>SMV Antragssystem</h1>
+            <ul id="main-nav">
+                <li><a href="#" id="home-link">Home</a></li>
+                <li><a href="#" id="antrag-link">Antrag einreichen</a></li>
+                <li id="login-nav-item"><a href="#" id="login-link">Login</a></li>
+                <li id="dashboard-nav-item" style="display:none;"><a href="#" id="dashboard-link">Dashboard</a></li>
+                <li id="admin-nav-item" style="display:none;"><a href="#" id="admin-link">Admin</a></li>
+                <li id="logout-nav-item" style="display:none;"><a href="#" id="logout-link">Logout (<span id="username-display"></span>)</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <div id="home-view" class="view active">
+            <h2>Willkommen im SMV Antragssystem</h2>
+            <p>Hier können Schülerinnen und Schüler ihre Anträge an die SMV einreichen. SMV-Mitglieder können sich einloggen, um die Anträge zu verwalten.</p>
+        </div>
+
+        <div id="login-view" class="view">
+            <h2>Login</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="username">Benutzername</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Passwort</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <button type="submit">Anmelden</button>
+            </form>
+            <p id="login-error" class="error-message"></p>
+        </div>
+
+        <div id="antrag-view" class="view">
+            <h2>Neuen Antrag einreichen</h2>
+            <form id="antrag-form">
+                <div class="form-group">
+                    <label for="vorname">Vorname</label>
+                    <input type="text" id="vorname" name="vorname" required>
+                </div>
+                <div class="form-group">
+                    <label for="nachname">Nachname</label>
+                    <input type="text" id="nachname" name="nachname" required>
+                </div>
+                <div class="form-group">
+                    <label for="lerngruppe">Lerngruppe</label>
+                    <input type="text" id="lerngruppe" name="lerngruppe" required>
+                </div>
+                <div class="form-group">
+                    <label for="thema">Thema</label>
+                    <input type="text" id="thema" name="thema" required>
+                </div>
+                <div class="form-group">
+                    <label for="begruendung">Begründung</label>
+                    <textarea id="begruendung" name="begruendung" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="phase">Phase</label>
+                    <select id="phase" name="phase" required>
+                        <option value="Phase 5">Phase 5</option>
+                        <option value="Phase 6">Phase 6</option>
+                        <option value="Phase 7">Phase 7</option>
+                        <option value="Phase 8">Phase 8</option>
+                        <option value="Phase 9">Phase 9</option>
+                        <option value="Phase 10">Phase 10</option>
+                        <option value="Phase 11">Phase 11</option>
+                        <option value="Phase 12">Phase 12</option>
+                        <option value="Phase 13">Phase 13</option>
+                    </select>
+                </div>
+                <div class="form-group checkbox-group">
+                    <input type="checkbox" id="benachrichtigung" name="benachrichtigung" checked>
+                    <label for="benachrichtigung">Benachrichtigung gewünscht</label>
+                </div>
+                <div class="form-group" id="benachrichtigungs-art-group">
+                    <label for="benachrichtigungs_art">Benachrichtigungsart</label>
+                    <select id="benachrichtigungs_art" name="benachrichtigungs_art">
+                        <option value="lerngruppenrat">Lerngruppenrat</option>
+                        <option value="texter">Texter</option>
+                    </select>
+                </div>
+                <button type="submit">Antrag einreichen</button>
+            </form>
+            <p id="antrag-success" class="success-message" style="display:none;"></p>
+            <p id="antrag-error" class="error-message" style="display:none;"></p>
+        </div>
+
+        <div id="dashboard-view" class="view">
+            <div class="dashboard-header">
+                <h2>Antrags-Dashboard</h2>
+                <div class="filters">
+                    <select id="filter-status">
+                        <option value="">Alle Status</option>
+                    </select>
+                    <select id="filter-phase">
+                        <option value="">Alle Phasen</option>
+                    </select>
+                    <select id="filter-tag">
+                        <option value="">Alle Tags</option>
+                    </select>
+                </div>
+            </div>
+            <table id="antrag-tabelle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Thema</th>
+                        <th>Lerngruppe</th>
+                        <th>Status</th>
+                        <th>Tags</th>
+                        <th>Erstellt am</th>
+                        <th>Details</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    </tbody>
+            </table>
+            <p id="dashboard-message"></p>
+        </div>
+
+        <div id="antrag-details-view" class="view">
+            <h2 id="details-title"></h2>
+            <div class="details-card">
+                <p><strong>Antragsteller:</strong> <span id="details-name"></span></p>
+                <p><strong>Lerngruppe:</strong> <span id="details-lerngruppe"></span></p>
+                <p><strong>Thema:</strong> <span id="details-thema"></span></p>
+                <p><strong>Begründung:</strong> <span id="details-begruendung"></span></p>
+                <p><strong>Phase:</strong> <span id="details-phase"></span></p>
+                <p><strong>Status:</strong> <span id="details-status"></span></p>
+                <p><strong>Tags:</strong> <span id="details-tags"></span></p>
+                <p><strong>Erstellt am:</strong> <span id="details-erstellt"></span></p>
+            </div>
+            <h3>Antrag bearbeiten</h3>
+            <form id="update-form">
+                <div class="form-group">
+                    <label for="new-status">Status ändern</label>
+                    <select id="new-status" name="status">
+                        <option value="eingereicht">eingereicht</option>
+                        <option value="in_bearbeitung">in_bearbeitung</option>
+                        <option value="genehmigt">genehmigt</option>
+                        <option value="abgelehnt">abgelehnt</option>
+                        <option value="zurueckgestellt">zurueckgestellt</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="new-tags">Tags aktualisieren (getrennt durch Komma)</label>
+                    <input type="text" id="new-tags" name="tags" placeholder="z.B. Dringend,Finanzierung">
+                </div>
+                <button type="submit">Änderungen speichern</button>
+            </form>
+            <p id="update-success" class="success-message" style="display:none;"></p>
+            <p id="update-error" class="error-message" style="display:none;"></p>
+            <hr>
+            <h3>Antrag löschen (nur Admins)</h3>
+            <button id="delete-antrag-btn" class="delete-button">Antrag löschen</button>
+            <p id="delete-antrag-message" class="error-message" style="display:none;"></p>
+        </div>
+
+        <div id="admin-view" class="view">
+            <h2>Admin-Bereich</h2>
+            <p id="admin-message" class="error-message" style="display:none;"></p>
+
+            <div class="admin-section">
+                <h3>Benutzer verwalten</h3>
+                <form id="create-user-form">
+                    <div class="form-group">
+                        <label for="new-username">Benutzername</label>
+                        <input type="text" id="new-username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-password">Passwort</label>
+                        <input type="password" id="new-password" required>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <input type="checkbox" id="is-admin">
+                        <label for="is-admin">Ist Administrator?</label>
+                    </div>
+                    <button type="submit">Benutzer erstellen</button>
+                </form>
+                <p id="create-user-message" class="success-message" style="display:none;"></p>
+            </div>
+            
+            <div class="admin-section">
+                <h3>Tags verwalten</h3>
+                <form id="add-tag-form">
+                    <div class="form-group">
+                        <label for="new-tag-name">Neuen Tag hinzufügen</label>
+                        <input type="text" id="new-tag-name" required>
+                    </div>
+                    <button type="submit">Tag hinzufügen</button>
+                </form>
+                <p id="add-tag-message" class="success-message" style="display:none;"></p>
+                <ul id="tags-list"></ul>
+            </div>
+        </div>
+    </main>
+    
+    <script src="script.js"></script>
+</body>
+</html>
