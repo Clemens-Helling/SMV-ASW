@@ -261,6 +261,9 @@ async def startup_event():
 
 
 # Endpoints
+@app.get("/")
+async def root():
+    return FileResponse("static/index.html")
 
 @app.post("/login", response_model=Token)
 async def login(benutzer_daten: BenutzerLogin):
