@@ -262,9 +262,7 @@ async def startup_event():
 
 
 # Endpoints
-@app.get("/")
-async def root():
-    return FileResponse("static/index.html")
+
 
 @app.post("/login", response_model=Token)
 async def login(benutzer_daten: BenutzerLogin):
@@ -534,7 +532,7 @@ async def health_check():
         "database": db_status
     }
 
-app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
