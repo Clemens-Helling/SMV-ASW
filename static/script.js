@@ -564,7 +564,7 @@ async function init() {
         await fetchAntraege();
         await fetchFilterOptions();
     } else {
-        showView('home-view');
+        showView('antrag-view');
     }
 }
 
