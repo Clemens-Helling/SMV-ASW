@@ -208,7 +208,7 @@ button:hover {
 
 .checkbox-group {
     display: flex;
-    align-items: center;
+    align-items: left;
     gap: 0.5rem;
 }
 
