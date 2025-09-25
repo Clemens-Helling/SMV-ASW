@@ -319,6 +319,8 @@ filterPhaseSelect.addEventListener('change', fetchAntraege);
 filterTagSelect.addEventListener('change', fetchAntraege);
 
 // Antragsdetails
+// ... (Alles wie gehabt bis zu showAntragDetails)
+
 window.showAntragDetails = async (antragId) => {
     console.log('showAntragDetails called with ID:', antragId); // Debug-Log
     
@@ -345,15 +347,20 @@ window.showAntragDetails = async (antragId) => {
 
         // Update-Formular vorbereiten - verwende _id oder id
         const actualId = antrag._id || antrag.id;
-        document.getElementById('new-status').value = antrag.status;
-        document.getElementById('new-tags').value = (antrag.tags || []).join(', ');
         updateForm.dataset.antragId = actualId;
         deleteAntragBtn.dataset.antragId = actualId;
 
         // Admin-Funktionen anzeigen
         if (currentIsAdmin) {
+            // Formularfelder und Buttons für Admin freischalten
+            updateForm.style.display = 'block';
             deleteAntragBtn.style.display = 'inline-block';
+            document.getElementById('new-status').disabled = false;
+            document.getElementById('new-tags').disabled = false;
+            document.getElementById('update-submit-btn').disabled = false;
         } else {
+            // Für Nicht-Admins Formular und Löschen-Button ausblenden
+            updateForm.style.display = 'none';
             deleteAntragBtn.style.display = 'none';
         }
 
@@ -366,6 +373,11 @@ window.showAntragDetails = async (antragId) => {
 
 // Antrag aktualisieren
 updateForm.addEventListener('submit', async (e) => {
+    // Admin-Prüfung im Frontend
+    if (!currentIsAdmin) {
+        alert('Nur Admins dürfen Anträge bearbeiten.');
+        return;
+    }
     e.preventDefault();
     const antragId = e.target.dataset.antragId;
     const newStatus = document.getElementById('new-status').value;
@@ -400,6 +412,11 @@ updateForm.addEventListener('submit', async (e) => {
 
 // Antrag löschen
 deleteAntragBtn.addEventListener('click', async () => {
+    // Admin-Prüfung im Frontend
+    if (!currentIsAdmin) {
+        alert('Nur Admins dürfen Anträge löschen.');
+        return;
+    }
     const antragId = deleteAntragBtn.dataset.antragId;
     if (confirm("Sind Sie sicher, dass Sie diesen Antrag löschen möchten?")) {
         const deleteMessage = document.getElementById('delete-antrag-message');
@@ -420,6 +437,8 @@ deleteAntragBtn.addEventListener('click', async () => {
         }
     }
 });
+
+// ... (Rest des Skripts bleibt unverändert)
 
 // Admin-Bereich: Benutzer erstellen
 createUserForm.addEventListener('submit', async (e) => {
