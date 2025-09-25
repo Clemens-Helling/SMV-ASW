@@ -323,12 +323,19 @@ filterTagSelect.addEventListener('change', fetchAntraege);
 
 window.showAntragDetails = async (antragId) => {
     console.log('showAntragDetails called with ID:', antragId); // Debug-Log
-    
+
+    // Grundsätzlich alles ausblenden/deaktivieren
+    updateForm.style.display = 'none';
+    deleteAntragBtn.style.display = 'none';
+    document.getElementById('new-status').disabled = true;
+    document.getElementById('new-tags').disabled = true;
+    document.getElementById('update-submit-btn').disabled = true;
+
     if (!antragId || antragId === 'undefined') {
         alert('Fehler: Antrag-ID ist nicht verfügbar.');
         return;
     }
-    
+
     try {
         const response = await fetchWithAuth(`/antraege/${antragId}`);
         const antrag = await response.json();
@@ -349,19 +356,16 @@ window.showAntragDetails = async (antragId) => {
         const actualId = antrag._id || antrag.id;
         updateForm.dataset.antragId = actualId;
         deleteAntragBtn.dataset.antragId = actualId;
+        document.getElementById('new-status').value = antrag.status || '';
+        document.getElementById('new-tags').value = (antrag.tags || []).join(', ');
 
         // Admin-Funktionen anzeigen
         if (currentIsAdmin) {
-            // Formularfelder und Buttons für Admin freischalten
             updateForm.style.display = 'block';
             deleteAntragBtn.style.display = 'inline-block';
             document.getElementById('new-status').disabled = false;
             document.getElementById('new-tags').disabled = false;
             document.getElementById('update-submit-btn').disabled = false;
-        } else {
-            // Für Nicht-Admins Formular und Löschen-Button ausblenden
-            updateForm.style.display = 'none';
-            deleteAntragBtn.style.display = 'none';
         }
 
         showView('antrag-details-view');
