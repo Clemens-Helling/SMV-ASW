@@ -76,6 +76,12 @@ class Phase(str, Enum):
     PHASE_13 = "Phase 13"
 
 
+class BenutzerRolle(str, Enum):
+    ADMIN = "admin"
+    SCHUELERSPRECHER = "schuelersprecher"
+    USER = "user"
+
+
 # Pydantic Models
 class PyObjectId(ObjectId):
     @classmethod
@@ -137,7 +143,8 @@ class BenutzerLogin(BaseModel):
 class BenutzerErstellen(BaseModel):
     benutzername: str = Field(..., min_length=3, max_length=50)
     passwort: str = Field(..., min_length=6)
-    ist_admin: bool = False
+    rolle: BenutzerRolle = BenutzerRolle.USER
+    # ist_admin bleibt für Rückwärtskompatibilität, wird aber ignoriert
 
 
 class Token(BaseModel):
@@ -148,7 +155,8 @@ class Token(BaseModel):
 class BenutzerInfo(BaseModel):
     id: str = Field(alias="_id")
     benutzername: str
-    ist_admin: bool
+    rolle: BenutzerRolle
+    ist_admin: bool  # Für Rückwärtskompatibilität, wird aus rolle abgeleitet
 
     class Config:
         allow_population_by_field_name = True
@@ -213,12 +221,42 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     return user
 
 
+def get_user_role(user: dict) -> BenutzerRolle:
+    """Ermittle die Benutzerrolle aus dem User-Objekt"""
+    # Neue Benutzer haben das 'rolle' Feld
+    if 'rolle' in user:
+        return BenutzerRolle(user['rolle'])
+    # Fallback für alte Benutzer basierend auf ist_admin
+    if user.get('ist_admin', False):
+        return BenutzerRolle.ADMIN
+    else:
+        return BenutzerRolle.USER
+
+
 async def get_admin_user(current_user: dict = Depends(get_current_user)):
-    if not current_user.get("ist_admin"):
+    """Nur Administratoren"""
+    user_role = get_user_role(current_user)
+    if user_role != BenutzerRolle.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Administratorrechte erforderlich"
         )
+    return current_user
+
+
+async def get_admin_or_schueler_user(current_user: dict = Depends(get_current_user)):
+    """Administratoren oder Schülersprecher"""
+    user_role = get_user_role(current_user)
+    if user_role not in [BenutzerRolle.ADMIN, BenutzerRolle.SCHUELERSPRECHER]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Administrator- oder Schülersprecherrechte erforderlich"
+        )
+    return current_user
+
+
+async def get_any_logged_in_user(current_user: dict = Depends(get_current_user)):
+    """Alle angemeldeten Benutzer (Admin, Schülersprecher, User)"""
     return current_user
 
 
@@ -231,23 +269,51 @@ async def startup_event():
         admin_user = {
             "benutzername": "admin",
             "hashed_password": get_password_hash("admin123"),
-            "ist_admin": True,
+            "rolle": BenutzerRolle.ADMIN,
+            "ist_admin": True,  # Für Rückwärtskompatibilität
             "erstellt_am": datetime.now()
         }
         await benutzer_collection.insert_one(admin_user)
         print("Standard-Admin erstellt: admin / admin123")
 
-    # Erstelle Standard-SMV-Mitglied falls nicht vorhanden
-    smv_exists = await benutzer_collection.find_one({"benutzername": "smv_mitglied"})
-    if not smv_exists:
-        smv_user = {
-            "benutzername": "smv_mitglied",
-            "hashed_password": get_password_hash("smv123"),
+    # Erstelle Standard-Schülersprecher falls nicht vorhanden
+    schueler_exists = await benutzer_collection.find_one({"benutzername": "schuelersprecher"})
+    if not schueler_exists:
+        schueler_user = {
+            "benutzername": "schuelersprecher",
+            "hashed_password": get_password_hash("schueler123"),
+            "rolle": BenutzerRolle.SCHUELERSPRECHER,
             "ist_admin": False,
             "erstellt_am": datetime.now()
         }
-        await benutzer_collection.insert_one(smv_user)
-        print("Standard-SMV-Mitglied erstellt: smv_mitglied / smv123")
+        await benutzer_collection.insert_one(schueler_user)
+        print("Standard-Schülersprecher erstellt: schuelersprecher / schueler123")
+
+    # Erstelle Standard-User falls nicht vorhanden
+    user_exists = await benutzer_collection.find_one({"benutzername": "smv_user"})
+    if not user_exists:
+        normal_user = {
+            "benutzername": "smv_user",
+            "hashed_password": get_password_hash("user123"),
+            "rolle": BenutzerRolle.USER,
+            "ist_admin": False,
+            "erstellt_am": datetime.now()
+        }
+        await benutzer_collection.insert_one(normal_user)
+        print("Standard-User erstellt: smv_user / user123")
+
+    # Migriere alte Benutzer ohne Rollen-Feld
+    async for user in benutzer_collection.find({"rolle": {"$exists": False}}):
+        if user.get("ist_admin", False):
+            new_role = BenutzerRolle.ADMIN
+        else:
+            new_role = BenutzerRolle.USER
+        
+        await benutzer_collection.update_one(
+            {"_id": user["_id"]},
+            {"$set": {"rolle": new_role}}
+        )
+        print(f"Benutzer {user['benutzername']} migriert zu Rolle: {new_role}")
 
     # Erstelle Standard-Tags falls nicht vorhanden
     standard_tags = ["Dringend", "Finanzierung", "Veranstaltung", "Regeländerung", "Sonstiges"]
@@ -282,10 +348,12 @@ async def login(benutzer_daten: BenutzerLogin):
 @app.get("/me", response_model=BenutzerInfo)
 async def get_current_user_info(current_user: dict = Depends(get_current_user)):
     """Aktuelle Benutzerinformationen abrufen"""
+    user_role = get_user_role(current_user)
     return BenutzerInfo(
         _id=str(current_user["_id"]),
         benutzername=current_user["benutzername"],
-        ist_admin=current_user["ist_admin"]
+        rolle=user_role,
+        ist_admin=(user_role == BenutzerRolle.ADMIN)  # Für Rückwärtskompatibilität
     )
 
 
@@ -303,7 +371,8 @@ async def benutzer_erstellen(benutzer: BenutzerErstellen, admin_user: dict = Dep
     neuer_benutzer = {
         "benutzername": benutzer.benutzername,
         "hashed_password": get_password_hash(benutzer.passwort),
-        "ist_admin": benutzer.ist_admin,
+        "rolle": benutzer.rolle,
+        "ist_admin": (benutzer.rolle == BenutzerRolle.ADMIN),  # Für Rückwärtskompatibilität
         "erstellt_am": datetime.now()
     }
 
@@ -311,7 +380,13 @@ async def benutzer_erstellen(benutzer: BenutzerErstellen, admin_user: dict = Dep
     # ObjectId in einen String umwandeln, bevor wir es dem Modell übergeben
     neuer_benutzer["_id"] = str(result.inserted_id)
 
-    return BenutzerInfo(**neuer_benutzer)
+    user_role = get_user_role(neuer_benutzer)
+    return BenutzerInfo(
+        _id=str(neuer_benutzer["_id"]),
+        benutzername=neuer_benutzer["benutzername"],
+        rolle=user_role,
+        ist_admin=(user_role == BenutzerRolle.ADMIN)
+    )
 
 
 @app.post("/antraege", response_model=AntragAntwort)
@@ -389,7 +464,7 @@ async def antrag_abrufen(antrag_id: str, current_user: dict = Depends(get_curren
 async def antrag_aktualisieren(
         antrag_id: str,
         update: AntragUpdate,
-        current_user: dict = Depends(get_current_user)
+        current_user: dict = Depends(get_admin_or_schueler_user)  # Nur Admin oder Schülersprecher
 ):
     """Antrag aktualisieren - Status und Tags ändern (Login erforderlich)"""
     if not ObjectId.is_valid(antrag_id):
@@ -433,8 +508,8 @@ async def antrag_loeschen(antrag_id: str, admin_user: dict = Depends(get_admin_u
 
 
 @app.get("/tags", response_model=List[str])
-async def verfuegbare_tags_abrufen(current_user: dict = Depends(get_current_user)):
-    """Verfügbare Tags abrufen (Login erforderlich)"""
+async def verfuegbare_tags_abrufen(current_user: dict = Depends(get_any_logged_in_user)):
+    """Verfügbare Tags abrufen (alle angemeldeten Benutzer)"""
     cursor = tags_collection.find({}).sort("name", 1)
     tags = await cursor.to_list(length=1000)
     return [tag["name"] for tag in tags]
@@ -530,7 +605,7 @@ async def health_check():
         "database": db_status
     }
 
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/sat", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn

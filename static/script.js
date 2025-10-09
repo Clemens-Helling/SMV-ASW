@@ -28,6 +28,7 @@ const benachrichtigungArtGroup = document.getElementById('benachrichtigungs-art-
 
 let currentUserId = null;
 let currentIsAdmin = false;
+let currentUserRole = null;
 
 // Hilfsfunktionen
 function showView(id) {
@@ -41,11 +42,14 @@ function updateNavigation() {
         document.getElementById('login-nav-item').style.display = 'none';
         document.getElementById('dashboard-nav-item').style.display = 'block';
         document.getElementById('logout-nav-item').style.display = 'block';
-        if (currentIsAdmin) {
+        
+        // Navigation basierend auf Rolle anzeigen
+        if (currentUserRole === 'admin') {
             document.getElementById('admin-nav-item').style.display = 'block';
         } else {
             document.getElementById('admin-nav-item').style.display = 'none';
         }
+        
         document.getElementById('username-display').textContent = localStorage.getItem('username') || '';
     } else {
         document.getElementById('login-nav-item').style.display = 'block';
@@ -208,7 +212,9 @@ async function fetchAndStoreUserInfo() {
         const user = await response.json();
         currentUserId = user.id;
         currentIsAdmin = user.ist_admin;
+        currentUserRole = user.rolle;
         localStorage.setItem('is_admin', user.ist_admin);
+        localStorage.setItem('user_role', user.rolle);
         updateNavigation();
     } catch (error) {
         console.error("Fehler beim Abrufen der Benutzerinfo:", error);
@@ -221,8 +227,10 @@ function logout() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('username');
     localStorage.removeItem('is_admin');
+    localStorage.removeItem('user_role');
     currentUserId = null;
     currentIsAdmin = false;
+    currentUserRole = null;
     updateNavigation();
     showView('home-view');
 }
@@ -350,11 +358,22 @@ window.showAntragDetails = async (antragId) => {
         updateForm.dataset.antragId = actualId;
         deleteAntragBtn.dataset.antragId = actualId;
 
-        // Admin-Funktionen anzeigen
-        if (currentIsAdmin) {
+        // Admin-Funktionen anzeigen (nur für Admins)
+        if (currentUserRole === 'admin') {
             deleteAntragBtn.style.display = 'inline-block';
         } else {
             deleteAntragBtn.style.display = 'none';
+        }
+
+        // Bearbeitungsformular anzeigen (für Admins und Schülersprecher)
+        const updateSection = document.querySelector('#antrag-details-view h3');
+        const updateFormElement = document.getElementById('update-form');
+        if (currentUserRole === 'admin' || currentUserRole === 'schuelersprecher') {
+            updateSection.style.display = 'block';
+            updateFormElement.style.display = 'block';
+        } else {
+            updateSection.style.display = 'none';
+            updateFormElement.style.display = 'none';
         }
 
         showView('antrag-details-view');
@@ -426,14 +445,14 @@ createUserForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('new-username').value;
     const password = document.getElementById('new-password').value;
-    const isAdmin = document.getElementById('is-admin').checked;
+    const rolle = document.getElementById('user-rolle').value;
     const messageElement = document.getElementById('create-user-message');
 
     try {
         const response = await fetchWithAuth('/benutzer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ benutzername: username, passwort: password, ist_admin: isAdmin }),
+            body: JSON.stringify({ benutzername: username, passwort: password, rolle: rolle }),
         });
         const result = await response.json();
         
@@ -559,6 +578,10 @@ addTagForm.addEventListener('submit', async (e) => {
 async function init() {
     const token = localStorage.getItem('access_token');
     if (token) {
+        // Lade gespeicherte Benutzerrolle
+        currentUserRole = localStorage.getItem('user_role');
+        currentIsAdmin = localStorage.getItem('is_admin') === 'true';
+        
         await fetchAndStoreUserInfo();
         showView('dashboard-view');
         await fetchAntraege();
