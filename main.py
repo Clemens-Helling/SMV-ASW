@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status#
+from fastapi.responses import FileResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -327,6 +328,7 @@ async def startup_event():
 
 
 # Endpoints
+
 
 @app.post("/login", response_model=Token)
 async def login(benutzer_daten: BenutzerLogin):

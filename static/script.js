@@ -1,5 +1,5 @@
 // Konfiguration
-const API_BASE_URL = 'http://127.0.0.1:8000'; // Passe diese URL bei Bedarf an
+const API_BASE_URL = 'https://smv-antrage.onrender.com'; // Passe diese URL bei Bedarf an
 
 // DOM-Elemente
 const views = document.querySelectorAll('.view');
@@ -327,14 +327,23 @@ filterPhaseSelect.addEventListener('change', fetchAntraege);
 filterTagSelect.addEventListener('change', fetchAntraege);
 
 // Antragsdetails
+// ... (Alles wie gehabt bis zu showAntragDetails)
+
 window.showAntragDetails = async (antragId) => {
     console.log('showAntragDetails called with ID:', antragId); // Debug-Log
-    
+
+    // Grundsätzlich alles ausblenden/deaktivieren
+    updateForm.style.display = 'none';
+    deleteAntragBtn.style.display = 'none';
+    document.getElementById('new-status').disabled = true;
+    document.getElementById('new-tags').disabled = true;
+    document.getElementById('update-submit-btn').disabled = true;
+
     if (!antragId || antragId === 'undefined') {
         alert('Fehler: Antrag-ID ist nicht verfügbar.');
         return;
     }
-    
+
     try {
         const response = await fetchWithAuth(`/antraege/${antragId}`);
         const antrag = await response.json();
@@ -353,10 +362,10 @@ window.showAntragDetails = async (antragId) => {
 
         // Update-Formular vorbereiten - verwende _id oder id
         const actualId = antrag._id || antrag.id;
-        document.getElementById('new-status').value = antrag.status;
-        document.getElementById('new-tags').value = (antrag.tags || []).join(', ');
         updateForm.dataset.antragId = actualId;
         deleteAntragBtn.dataset.antragId = actualId;
+        document.getElementById('new-status').value = antrag.status || '';
+        document.getElementById('new-tags').value = (antrag.tags || []).join(', ');
 
         // Admin-Funktionen anzeigen (nur für Admins)
         if (currentUserRole === 'admin') {
@@ -385,6 +394,11 @@ window.showAntragDetails = async (antragId) => {
 
 // Antrag aktualisieren
 updateForm.addEventListener('submit', async (e) => {
+    // Admin-Prüfung im Frontend
+    if (!currentIsAdmin) {
+        alert('Nur Admins dürfen Anträge bearbeiten.');
+        return;
+    }
     e.preventDefault();
     const antragId = e.target.dataset.antragId;
     const newStatus = document.getElementById('new-status').value;
@@ -419,6 +433,11 @@ updateForm.addEventListener('submit', async (e) => {
 
 // Antrag löschen
 deleteAntragBtn.addEventListener('click', async () => {
+    // Admin-Prüfung im Frontend
+    if (!currentIsAdmin) {
+        alert('Nur Admins dürfen Anträge löschen.');
+        return;
+    }
     const antragId = deleteAntragBtn.dataset.antragId;
     if (confirm("Sind Sie sicher, dass Sie diesen Antrag löschen möchten?")) {
         const deleteMessage = document.getElementById('delete-antrag-message');
@@ -439,6 +458,8 @@ deleteAntragBtn.addEventListener('click', async () => {
         }
     }
 });
+
+// ... (Rest des Skripts bleibt unverändert)
 
 // Admin-Bereich: Benutzer erstellen
 createUserForm.addEventListener('submit', async (e) => {
@@ -587,7 +608,7 @@ async function init() {
         await fetchAntraege();
         await fetchFilterOptions();
     } else {
-        showView('home-view');
+        showView('antrag-view');
     }
 }
 
