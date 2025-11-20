@@ -333,11 +333,17 @@ window.showAntragDetails = async (antragId) => {
     console.log('showAntragDetails called with ID:', antragId); // Debug-Log
 
     // Grundsätzlich alles ausblenden/deaktivieren
-    updateForm.style.display = 'none';
-    deleteAntragBtn.style.display = 'none';
-    document.getElementById('new-status').disabled = true;
-    document.getElementById('new-tags').disabled = true;
-    document.getElementById('update-submit-btn').disabled = true;
+    const updateFormEl = document.getElementById('update-form');
+    const deleteBtnEl = document.getElementById('delete-antrag-btn');
+    const newStatusEl = document.getElementById('new-status');
+    const newTagsEl = document.getElementById('new-tags');
+    const updateSubmitBtnEl = document.getElementById('update-submit-btn');
+
+    if (updateFormEl) updateFormEl.style.display = 'none';
+    if (deleteBtnEl) deleteBtnEl.style.display = 'none';
+    if (newStatusEl) newStatusEl.disabled = true;
+    if (newTagsEl) newTagsEl.disabled = true;
+    if (updateSubmitBtnEl) updateSubmitBtnEl.disabled = true;
 
     if (!antragId || antragId === 'undefined') {
         alert('Fehler: Antrag-ID ist nicht verfügbar.');
@@ -360,29 +366,34 @@ window.showAntragDetails = async (antragId) => {
         document.getElementById('details-tags').textContent = (antrag.tags || []).join(', ') || 'Keine Tags';
         document.getElementById('details-erstellt').textContent = formatDate(antrag.erstellt_am);
 
+
         // Update-Formular vorbereiten - verwende _id oder id
         const actualId = antrag._id || antrag.id;
-        updateForm.dataset.antragId = actualId;
-        deleteAntragBtn.dataset.antragId = actualId;
-        document.getElementById('new-status').value = antrag.status || '';
-        document.getElementById('new-tags').value = (antrag.tags || []).join(', ');
+        if (updateFormEl) updateFormEl.dataset.antragId = actualId;
+        if (deleteBtnEl) deleteBtnEl.dataset.antragId = actualId;
+        if (newStatusEl) newStatusEl.value = antrag.status || '';
+        if (newTagsEl) newTagsEl.value = (antrag.tags || []).join(', ');
 
         // Admin-Funktionen anzeigen (nur für Admins)
-        if (currentUserRole === 'admin') {
-            deleteAntragBtn.style.display = 'inline-block';
-        } else {
-            deleteAntragBtn.style.display = 'none';
+        if (deleteBtnEl) {
+            if (currentUserRole === 'admin') {
+                deleteBtnEl.style.display = 'inline-block';
+            } else {
+                deleteBtnEl.style.display = 'none';
+            }
         }
 
         // Bearbeitungsformular anzeigen (für Admins und Schülersprecher)
         const updateSection = document.querySelector('#antrag-details-view h3');
         const updateFormElement = document.getElementById('update-form');
-        if (currentUserRole === 'admin' || currentUserRole === 'schuelersprecher') {
-            updateSection.style.display = 'block';
-            updateFormElement.style.display = 'block';
-        } else {
-            updateSection.style.display = 'none';
-            updateFormElement.style.display = 'none';
+        if (updateSection) {
+            if (currentUserRole === 'admin' || currentUserRole === 'schuelersprecher') {
+                updateSection.style.display = 'block';
+                if (updateFormElement) updateFormElement.style.display = 'block';
+            } else {
+                updateSection.style.display = 'none';
+                if (updateFormElement) updateFormElement.style.display = 'none';
+            }
         }
 
         showView('antrag-details-view');

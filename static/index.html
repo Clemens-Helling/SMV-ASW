@@ -145,7 +145,7 @@
                 <p><strong>Erstellt am:</strong> <span id="details-erstellt"></span></p>
             </div>
             <h3>Antrag bearbeiten</h3>
-            <form id="update-form", style= "display:none">
+            <form id="update-form" style="display:none">
                 <div class="form-group">
                     <label for="new-status">Status ändern</label>
                     <select id="new-status" name="status">
@@ -160,7 +160,7 @@
                     <label for="new-tags">Tags aktualisieren (getrennt durch Komma)</label>
                     <input type="text" id="new-tags" name="tags" placeholder="z.B. Dringend,Finanzierung">
                 </div>
-                <button type="submit">Änderungen speichern</button>
+                <button id="update-submit-btn" type="submit">Änderungen speichern</button>
             </form>
             <p id="update-success" class="success-message" style="display:none;"></p>
             <p id="update-error" class="error-message" style="display:none;"></p>
