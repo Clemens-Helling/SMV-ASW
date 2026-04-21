@@ -1,5 +1,7 @@
 // Konfiguration
-const API_BASE_URL = 'http://192.168.1.XXX:8000'; // Ersetzen Sie XXX mit der IP Ihres Raspberry Pi
+// PHP-Backend liegt im /api/-Unterverzeichnis des Web-Servers.
+// Für lokale Entwicklung: 'http://localhost/api'  – anpassen falls nötig.
+const API_BASE_URL = '/api';
 
 // DOM-Elemente
 const views = document.querySelectorAll('.view');
@@ -16,6 +18,7 @@ const antragForm = document.getElementById('antrag-form');
 const updateForm = document.getElementById('update-form');
 const createUserForm = document.getElementById('create-user-form');
 const addTagForm = document.getElementById('add-tag-form');
+const addSitzungForm = document.getElementById('add-sitzung-form');
 const deleteAntragBtn = document.getElementById('delete-antrag-btn');
 
 const antragTabelleBody = document.querySelector('#antrag-tabelle tbody');
@@ -28,6 +31,7 @@ const benachrichtigungArtGroup = document.getElementById('benachrichtigungs-art-
 
 let currentUserId = null;
 let currentIsAdmin = false;
+let currentUserRolle = null;
 
 // Hilfsfunktionen
 function showView(id) {
@@ -101,6 +105,7 @@ adminLink.addEventListener('click', async (e) => {
     e.preventDefault();
     showView('admin-view');
     await loadTagsList();
+    await loadSitzungenList();
 });
 
 logoutLink.addEventListener('click', (e) => {
@@ -208,7 +213,9 @@ async function fetchAndStoreUserInfo() {
         const user = await response.json();
         currentUserId = user.id;
         currentIsAdmin = user.ist_admin;
+        currentUserRolle = user.rolle;
         localStorage.setItem('is_admin', user.ist_admin);
+        localStorage.setItem('user_rolle', user.rolle);
         updateNavigation();
     } catch (error) {
         console.error("Fehler beim Abrufen der Benutzerinfo:", error);
@@ -221,8 +228,10 @@ function logout() {
     localStorage.removeItem('access_token');
     localStorage.removeItem('username');
     localStorage.removeItem('is_admin');
+    localStorage.removeItem('user_rolle');
     currentUserId = null;
     currentIsAdmin = false;
+    currentUserRolle = null;
     updateNavigation();
     showView('home-view');
 }
@@ -328,8 +337,12 @@ window.showAntragDetails = async (antragId) => {
     }
     
     try {
-        const response = await fetchWithAuth(`/antraege/${antragId}`);
-        const antrag = await response.json();
+        const [antragResp, sitzungenResp] = await Promise.all([
+            fetchWithAuth(`/antraege/${antragId}`),
+            fetchWithAuth('/sitzungen'),
+        ]);
+        const antrag    = await antragResp.json();
+        const sitzungen = await sitzungenResp.json();
 
         console.log('Received antrag details:', antrag); // Debug-Log
 
@@ -343,19 +356,40 @@ window.showAntragDetails = async (antragId) => {
         document.getElementById('details-tags').textContent = (antrag.tags || []).join(', ') || 'Keine Tags';
         document.getElementById('details-erstellt').textContent = formatDate(antrag.erstellt_am);
 
+        // Sitzung anzeigen
+        const sitzungEl = document.getElementById('details-sitzung');
+        if (antrag.sitzung) {
+            const datumText = antrag.sitzung.datum ? ` (${antrag.sitzung.datum})` : '';
+            sitzungEl.textContent = antrag.sitzung.bezeichnung + datumText;
+        } else {
+            sitzungEl.textContent = '–';
+        }
+
         // Update-Formular vorbereiten - verwende _id oder id
         const actualId = antrag._id || antrag.id;
         document.getElementById('new-status').value = antrag.status;
         document.getElementById('new-tags').value = (antrag.tags || []).join(', ');
+
+        // Sitzungs-Dropdown befüllen
+        const sitzungSelect = document.getElementById('new-sitzung');
+        sitzungSelect.innerHTML = '<option value="">– keine –</option>';
+        sitzungen.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.bezeichnung + (s.datum ? ` (${s.datum})` : '');
+            if (antrag.sitzung_id && antrag.sitzung_id == s.id) {
+                opt.selected = true;
+            }
+            sitzungSelect.appendChild(opt);
+        });
+
         updateForm.dataset.antragId = actualId;
         deleteAntragBtn.dataset.antragId = actualId;
 
-        // Admin-Funktionen anzeigen
-        if (currentIsAdmin) {
-            deleteAntragBtn.style.display = 'inline-block';
-        } else {
-            deleteAntragBtn.style.display = 'none';
-        }
+        // Bearbeitungs-/Lösch-Funktionen je nach Rolle anzeigen
+        const canEdit = currentUserRolle === 'admin' || currentUserRolle === 'schuelersprecher';
+        updateForm.style.display = canEdit ? 'block' : 'none';
+        deleteAntragBtn.style.display = currentIsAdmin ? 'inline-block' : 'none';
 
         showView('antrag-details-view');
     } catch (error) {
@@ -370,6 +404,8 @@ updateForm.addEventListener('submit', async (e) => {
     const antragId = e.target.dataset.antragId;
     const newStatus = document.getElementById('new-status').value;
     const newTags = document.getElementById('new-tags').value.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+    const sitzungVal = document.getElementById('new-sitzung').value;
+    const sitzungId = sitzungVal === '' ? null : parseInt(sitzungVal, 10);
     const updateSuccess = document.getElementById('update-success');
     const updateError = document.getElementById('update-error');
 
@@ -377,7 +413,7 @@ updateForm.addEventListener('submit', async (e) => {
         const response = await fetchWithAuth(`/antraege/${antragId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: newStatus, tags: newTags }),
+            body: JSON.stringify({ status: newStatus, tags: newTags, sitzung_id: sitzungId }),
         });
         const result = await response.json();
         if (response.ok) {
@@ -387,6 +423,13 @@ updateForm.addEventListener('submit', async (e) => {
             // Aktualisierte Daten anzeigen
             document.getElementById('details-status').textContent = result.status;
             document.getElementById('details-tags').textContent = (result.tags || []).join(', ') || 'Keine Tags';
+            const sitzungEl = document.getElementById('details-sitzung');
+            if (result.sitzung) {
+                const datumText = result.sitzung.datum ? ` (${result.sitzung.datum})` : '';
+                sitzungEl.textContent = result.sitzung.bezeichnung + datumText;
+            } else {
+                sitzungEl.textContent = '–';
+            }
         } else {
             updateError.textContent = result.detail || 'Fehler beim Aktualisieren des Antrags.';
             updateError.style.display = 'block';
@@ -426,14 +469,14 @@ createUserForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('new-username').value;
     const password = document.getElementById('new-password').value;
-    const isAdmin = document.getElementById('is-admin').checked;
+    const rolle = document.getElementById('user-rolle').value;
     const messageElement = document.getElementById('create-user-message');
 
     try {
         const response = await fetchWithAuth('/benutzer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ benutzername: username, passwort: password, ist_admin: isAdmin }),
+            body: JSON.stringify({ benutzername: username, passwort: password, rolle: rolle }),
         });
         const result = await response.json();
         
@@ -554,6 +597,102 @@ addTagForm.addEventListener('submit', async (e) => {
         messageElement.classList.add('error-message');
     }
 });
+
+// Admin-Bereich: Sitzungen verwalten
+async function loadSitzungenList() {
+    const sitzungenList = document.getElementById('sitzungen-list');
+    sitzungenList.innerHTML = '';
+    const messageElement = document.getElementById('add-sitzung-message');
+
+    try {
+        const response = await fetchWithAuth('/sitzungen');
+        const sitzungen = await response.json();
+
+        if (sitzungen.length === 0) {
+            sitzungenList.innerHTML = '<li>Keine Sitzungen vorhanden.</li>';
+            return;
+        }
+
+        sitzungen.forEach(s => {
+            const li = document.createElement('li');
+            const datumText = s.datum ? ` (${s.datum})` : '';
+            li.innerHTML = `
+                <span>${s.bezeichnung}${datumText}</span>
+                <button class="delete-sitzung-btn" data-sitzung-id="${s.id}">&times;</button>
+            `;
+            sitzungenList.appendChild(li);
+        });
+
+        sitzungenList.querySelectorAll('.delete-sitzung-btn').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const sitzungId = e.target.dataset.sitzungId;
+                await deleteSitzung(sitzungId);
+            });
+        });
+    } catch (error) {
+        messageElement.textContent = error.message;
+        messageElement.style.display = 'block';
+    }
+}
+
+async function deleteSitzung(sitzungId) {
+    const messageElement = document.getElementById('add-sitzung-message');
+    if (confirm('Sitzung wirklich löschen? Anträge, die dieser Sitzung zugeordnet sind, werden dadurch nicht gelöscht, nur die Verknüpfung wird aufgehoben.')) {
+        try {
+            const response = await fetchWithAuth(`/sitzungen/${sitzungId}`, { method: 'DELETE' });
+            const result = await response.json();
+            if (response.ok) {
+                messageElement.textContent = result.message;
+                messageElement.style.display = 'block';
+                messageElement.classList.remove('error-message');
+                messageElement.classList.add('success-message');
+                await loadSitzungenList();
+            } else {
+                messageElement.textContent = result.detail || 'Fehler beim Löschen der Sitzung.';
+                messageElement.style.display = 'block';
+                messageElement.classList.remove('success-message');
+                messageElement.classList.add('error-message');
+            }
+        } catch (error) {
+            messageElement.textContent = error.message;
+            messageElement.style.display = 'block';
+        }
+    }
+}
+
+if (addSitzungForm) {
+    addSitzungForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const bezeichnung = document.getElementById('new-sitzung-bezeichnung').value;
+        const datum = document.getElementById('new-sitzung-datum').value;
+        const messageElement = document.getElementById('add-sitzung-message');
+
+        try {
+            const response = await fetchWithAuth('/sitzungen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bezeichnung, datum: datum || null }),
+            });
+            const result = await response.json();
+            if (response.ok) {
+                messageElement.textContent = `Sitzung '${result.bezeichnung}' hinzugefügt.`;
+                messageElement.style.display = 'block';
+                messageElement.classList.remove('error-message');
+                messageElement.classList.add('success-message');
+                addSitzungForm.reset();
+                await loadSitzungenList();
+            } else {
+                messageElement.textContent = result.detail || 'Fehler beim Hinzufügen der Sitzung.';
+                messageElement.style.display = 'block';
+                messageElement.classList.remove('success-message');
+                messageElement.classList.add('error-message');
+            }
+        } catch (error) {
+            messageElement.textContent = error.message;
+            messageElement.style.display = 'block';
+        }
+    });
+}
 
 // Initialisierung
 async function init() {
