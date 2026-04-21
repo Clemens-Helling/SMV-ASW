@@ -36,7 +36,8 @@ function jwt_decode(string $token, string $key): ?array {
     if (!is_array($decoded)) {
         return null;
     }
-    if (isset($decoded['exp']) && $decoded['exp'] < time()) {
+    if (isset($decoded['exp']) && $decoded['exp'] < (time() - 60)) {
+        // 60-Sekunden-Toleranz für geringe Zeitabweichungen zwischen Servern
         return null;
     }
     return $decoded;

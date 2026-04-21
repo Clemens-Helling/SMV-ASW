@@ -18,5 +18,14 @@ define('DB_PORT',     $_ENV['DB_PORT']     ?? '3306');
 define('DB_NAME',     $_ENV['DB_NAME']     ?? 'smv');
 define('DB_USER',     $_ENV['DB_USER']     ?? 'root');
 define('DB_PASSWORD', $_ENV['DB_PASSWORD'] ?? '');
-define('SECRET_KEY',  $_ENV['SECRET_KEY']  ?? 'your-secret-key-hier-ersetzen');
+
+$secretKey = $_ENV['SECRET_KEY'] ?? '';
+if ($secretKey === '') {
+    // Kein SECRET_KEY konfiguriert – sichere Zufallszeichenkette generieren.
+    // In Produktion sollte SECRET_KEY in der .env-Datei gesetzt sein,
+    // damit Tokens über Neustarts hinweg gültig bleiben.
+    $secretKey = bin2hex(random_bytes(32));
+}
+define('SECRET_KEY', $secretKey);
+
 define('TOKEN_EXPIRE_MINUTES', 30);

@@ -377,7 +377,7 @@ window.showAntragDetails = async (antragId) => {
             const opt = document.createElement('option');
             opt.value = s.id;
             opt.textContent = s.bezeichnung + (s.datum ? ` (${s.datum})` : '');
-            if (antrag.sitzung_id && antrag.sitzung_id == s.id) {
+            if (antrag.sitzung_id && antrag.sitzung_id === s.id) {
                 opt.selected = true;
             }
             sitzungSelect.appendChild(opt);

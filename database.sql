@@ -55,10 +55,6 @@ CREATE TABLE IF NOT EXISTS antrag_tags (
     CONSTRAINT fk_at_tag    FOREIGN KEY (tag_name)  REFERENCES tags(name)    ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- Standard-Benutzer (Passwörter werden beim ersten Start durch PHP gesetzt)
--- Passwörter: admin→admin123, schuelersprecher→schueler123, smv_user→user123
--- Die PHP-API erstellt diese beim Start automatisch, falls nicht vorhanden.
-
 -- Standard-Tags
 INSERT IGNORE INTO tags (name) VALUES
     ('Dringend'),
