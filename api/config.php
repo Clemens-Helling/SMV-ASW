@@ -1,31 +1,49 @@
 <?php
-// Konfiguration – Werte können über Umgebungsvariablen oder eine .env-Datei gesetzt werden.
-
-// Lade .env aus dem Projekt-Root, falls vorhanden
+// Konfiguration aus Server-Umgebung oder einer lokalen .env-Datei laden.
 $envFile = dirname(__DIR__) . '/.env';
 if (file_exists($envFile)) {
     foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-        if (str_starts_with(trim($line), '#') || !str_contains($line, '=')) {
+        $line = trim($line);
+        if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
             continue;
         }
         [$key, $value] = explode('=', $line, 2);
-        $_ENV[trim($key)] = trim($value);
+        $key = trim($key);
+        $value = trim($value);
+        if (strlen($value) >= 2 && $value[0] === $value[strlen($value) - 1]
+            && ($value[0] === '"' || $value[0] === "'")) {
+            $value = substr($value, 1, -1);
+        }
+        $_ENV[$key] = $value;
     }
 }
 
-define('DB_HOST',     $_ENV['DB_HOST']     ?? 'localhost');
-define('DB_PORT',     $_ENV['DB_PORT']     ?? '3306');
-define('DB_NAME',     $_ENV['DB_NAME']     ?? 'smv');
-define('DB_USER',     $_ENV['DB_USER']     ?? 'root');
-define('DB_PASSWORD', $_ENV['DB_PASSWORD'] ?? '');
+function app_env(string $key, ?string $default = null): ?string {
+    $value = getenv($key);
+    if ($value !== false) {
+        return $value;
+    }
+    return $_ENV[$key] ?? $default;
+}
 
-$secretKey = $_ENV['SECRET_KEY'] ?? '';
-if ($secretKey === '') {
-    // Kein SECRET_KEY konfiguriert – sichere Zufallszeichenkette generieren.
-    // In Produktion sollte SECRET_KEY in der .env-Datei gesetzt sein,
-    // damit Tokens über Neustarts hinweg gültig bleiben.
-    $secretKey = bin2hex(random_bytes(32));
+define('DB_HOST',     app_env('DB_HOST', 'localhost'));
+define('DB_PORT',     app_env('DB_PORT', '3306'));
+define('DB_NAME',     app_env('DB_NAME', 'smv'));
+define('DB_USER',     app_env('DB_USER', 'root'));
+define('DB_PASSWORD', app_env('DB_PASSWORD', ''));
+
+$secretKey = app_env('SECRET_KEY', '');
+if (strlen($secretKey) < 32) {
+    throw new RuntimeException('SECRET_KEY muss gesetzt sein und mindestens 32 Zeichen enthalten.');
+}
+
+$initialAdminUsername = app_env('INITIAL_ADMIN_USERNAME', '');
+$initialAdminPassword = app_env('INITIAL_ADMIN_PASSWORD', '');
+if (($initialAdminUsername === '') !== ($initialAdminPassword === '')) {
+    throw new RuntimeException('INITIAL_ADMIN_USERNAME und INITIAL_ADMIN_PASSWORD müssen gemeinsam gesetzt werden.');
 }
 define('SECRET_KEY', $secretKey);
+define('INITIAL_ADMIN_USERNAME', $initialAdminUsername);
+define('INITIAL_ADMIN_PASSWORD', $initialAdminPassword);
 
 define('TOKEN_EXPIRE_MINUTES', 30);

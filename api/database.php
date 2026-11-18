@@ -24,28 +24,25 @@ function get_db(): PDO {
 function ensure_defaults(): void {
     $db = get_db();
 
-    $defaults = [
-        ['benutzername' => 'admin',             'passwort' => 'admin123',    'rolle' => 'admin'],
-        ['benutzername' => 'schuelersprecher',   'passwort' => 'schueler123', 'rolle' => 'schuelersprecher'],
-        ['benutzername' => 'smv_user',           'passwort' => 'user123',     'rolle' => 'user'],
-    ];
-
-    foreach ($defaults as $u) {
-        $stmt = $db->prepare('SELECT id FROM benutzer WHERE benutzername = ?');
-        $stmt->execute([$u['benutzername']]);
-        if (!$stmt->fetch()) {
-            $hash = password_hash($u['passwort'], PASSWORD_BCRYPT);
-            $ins  = $db->prepare('INSERT INTO benutzer (benutzername, hashed_password, rolle) VALUES (?, ?, ?)');
-            $ins->execute([$u['benutzername'], $hash, $u['rolle']]);
+    $userCount = (int)$db->query('SELECT COUNT(*) FROM benutzer')->fetchColumn();
+    if ($userCount === 0) {
+        if (strlen(INITIAL_ADMIN_USERNAME) < 3 || strlen(INITIAL_ADMIN_USERNAME) > 50
+            || strlen(INITIAL_ADMIN_PASSWORD) < 12) {
+            throw new RuntimeException(
+                'Noch kein Benutzer vorhanden. Für die Ersteinrichtung einen 3–50 Zeichen langen '
+                . 'INITIAL_ADMIN_USERNAME und ein mindestens 12 Zeichen langes '
+                . 'INITIAL_ADMIN_PASSWORD konfigurieren.'
+            );
         }
+        $hash = password_hash(INITIAL_ADMIN_PASSWORD, PASSWORD_BCRYPT);
+        $stmt = $db->prepare(
+            'INSERT INTO benutzer (benutzername, hashed_password, rolle) VALUES (?, ?, ?)'
+        );
+        $stmt->execute([INITIAL_ADMIN_USERNAME, $hash, 'admin']);
     }
 
     $standardTags = ['Dringend', 'Finanzierung', 'Veranstaltung', 'Regeländerung', 'Sonstiges'];
     foreach ($standardTags as $tag) {
-        $stmt = $db->prepare('SELECT id FROM tags WHERE name = ?');
-        $stmt->execute([$tag]);
-        if (!$stmt->fetch()) {
-            $db->prepare('INSERT INTO tags (name) VALUES (?)')->execute([$tag]);
-        }
+        $db->prepare('INSERT IGNORE INTO tags (name) VALUES (?)')->execute([$tag]);
     }
 }

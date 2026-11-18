@@ -10,33 +10,28 @@ require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/auth.php';
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=utf-8');
-
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
-    exit;
-}
-
-// Standard-Benutzer und -Tags anlegen (nur beim ersten Aufruf relevant)
-ensure_defaults();
 
 // ── Routing ───────────────────────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Pfad relativ zu /api bereinigen
-$scriptDir = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/');
+$scriptDir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'])), '/');
 $requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$path = '/' . ltrim(substr($requestUri, strlen($scriptDir)), '/');
+$relativePath = substr($requestUri, strlen($scriptDir));
+$relativePath = preg_replace('#^/index\.php(?=/|$)#', '', $relativePath);
+$path = '/' . ltrim($relativePath, '/');
 
 // Pfad-Segmente
 $segments = array_values(array_filter(explode('/', $path)));
 
 $resource  = $segments[0] ?? '';
 $resourceId = $segments[1] ?? null;
+
+// Die Datenbank soll auch dann über /health erreichbar sein, wenn sie nicht verfügbar ist.
+if ($resource !== 'health') {
+    ensure_defaults();
+}
 
 // JSON-Body lesen
 $body = json_decode(file_get_contents('php://input'), true) ?? [];
@@ -524,7 +519,6 @@ function enrich_antrag(PDO $db, array $row): array {
 
     return [
         'id'                         => $id,
-        '_id'                        => $id,  // Kompatibilität mit altem Frontend
         'vorname'                    => $row['vorname'],
         'nachname'                   => $row['nachname'],
         'lerngruppe'                 => $row['lerngruppe'],

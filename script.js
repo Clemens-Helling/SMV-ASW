@@ -1,6 +1,5 @@
 // Konfiguration
-// PHP-Backend liegt im /api/-Unterverzeichnis des Web-Servers.
-// Für lokale Entwicklung: 'http://localhost/api'  – anpassen falls nötig.
+// Das PHP-Backend liegt im /api/-Unterverzeichnis des Web-Servers.
 const API_BASE_URL = '/api';
 
 // DOM-Elemente
@@ -202,7 +201,7 @@ loginForm.addEventListener('submit', async (e) => {
             errorMessage.style.display = 'block';
         }
     } catch (error) {
-        errorMessage.textContent = 'Netzwerkfehler: ' + error.message;
+        errorMessage.textContent = error instanceof Error ? error.message : 'Anmeldung fehlgeschlagen.';
         errorMessage.style.display = 'block';
     }
 });
@@ -220,6 +219,7 @@ async function fetchAndStoreUserInfo() {
     } catch (error) {
         console.error("Fehler beim Abrufen der Benutzerinfo:", error);
         logout();
+        throw error;
     }
 }
 
@@ -267,7 +267,7 @@ async function fetchAntraege() {
 
         antraege.forEach(antrag => {
             const row = document.createElement('tr');
-            const antragId = antrag._id || antrag.id; // MongoDB verwendet _id
+            const antragId = antrag.id;
             console.log('Processing antrag:', antrag, 'ID:', antragId); // Debug-Log
             row.innerHTML = `
                 <td>${antragId != null ? antragId : 'N/A'}</td>
@@ -365,8 +365,7 @@ window.showAntragDetails = async (antragId) => {
             sitzungEl.textContent = '–';
         }
 
-        // Update-Formular vorbereiten - verwende _id oder id
-        const actualId = antrag._id || antrag.id;
+        const actualId = antrag.id;
         document.getElementById('new-status').value = antrag.status;
         document.getElementById('new-tags').value = (antrag.tags || []).join(', ');
 

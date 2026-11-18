@@ -58,12 +58,21 @@ function create_access_token(string $username): string {
  * Liest den Bearer-Token aus dem Authorization-Header.
  */
 function get_bearer_token(): ?string {
-    $headers = getallheaders();
-    $auth    = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-    if (str_starts_with($auth, 'Bearer ')) {
-        return substr($auth, 7);
+    $auth = '';
+    if (function_exists('getallheaders')) {
+        foreach (getallheaders() as $name => $value) {
+            if (strcasecmp($name, 'Authorization') === 0 && is_string($value)) {
+                $auth = $value;
+                break;
+            }
+        }
     }
-    return null;
+    $auth = $auth
+        ?: ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
+
+    return preg_match('/\ABearer\s+(\S+)\z/i', trim($auth), $matches) === 1
+        ? $matches[1]
+        : null;
 }
 
 /**

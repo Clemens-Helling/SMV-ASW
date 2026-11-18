@@ -1,5 +1,4 @@
--- SMV Antragssystem - MySQL Datenbankschema
--- Erstellt beim Umstieg von Python/MongoDB auf PHP/MySQL
+-- SMV Antragssystem - MySQL-Datenbankschema
 
 CREATE DATABASE IF NOT EXISTS smv CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE smv;
