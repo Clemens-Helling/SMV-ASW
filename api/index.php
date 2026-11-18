@@ -12,6 +12,15 @@ require_once __DIR__ . '/auth.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+// Unerwartete Fehler als JSON melden und im Server-Log festhalten, statt eine leere 500-Seite zu liefern.
+set_exception_handler(function (Throwable $e): void {
+    error_log('SMV API: ' . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    if (!headers_sent()) {
+        http_response_code(500);
+    }
+    echo json_encode(['detail' => 'Interner Serverfehler'], JSON_UNESCAPED_UNICODE);
+});
+
 // ── Routing ───────────────────────────────────────────────────────────────────
 $method = $_SERVER['REQUEST_METHOD'];
 

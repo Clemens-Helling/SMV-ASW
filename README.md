@@ -21,3 +21,7 @@ Die Anwendung besteht aus einer statischen Oberfläche, einer PHP-API und einer 
 Den Inhalt des Repositorys in das Web-Verzeichnis der Domain hochladen und dort PHP 8.1+, `pdo_mysql` sowie Apache-Rewrite aktivieren. Die Domain muss auf den Projektordner zeigen, damit `index.php`, `api/` und `static/` gemeinsam erreichbar sind.
 
 Die Werte aus `.env.example` als Umgebungsvariablen beim Hoster hinterlegen oder eine `.env` im Projektordner anlegen. `.env` und `database.sql` sind per `.htaccess` gegen direkten Webzugriff gesperrt. Die Datenbank muss vor dem ersten Aufruf mit `database.sql` eingerichtet sein.
+
+## Bestehende Datenbank aus der Python-Version aktualisieren
+
+Läuft bereits eine Datenbank mit dem alten Schema (z. B. `antrag_tags.tag_id`, keine Tabelle `sitzungen`), meldet die API beim Laden der Anträge einen 500-Fehler. Dann einmalig `migrations/2026-11-18_altes-schema-auf-php-schema.sql` in phpMyAdmin unter „SQL“ ausführen (MariaDB 10.5+, vorher einen Export als Backup anlegen). Anträge, Tags und Benutzer bleiben erhalten. Neue Installationen brauchen das nicht, sie nutzen `database.sql`.
