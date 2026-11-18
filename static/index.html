@@ -143,6 +143,7 @@
                 <p><strong>Status:</strong> <span id="details-status"></span></p>
                 <p><strong>Tags:</strong> <span id="details-tags"></span></p>
                 <p><strong>Erstellt am:</strong> <span id="details-erstellt"></span></p>
+                <p><strong>Besprochen in Sitzung:</strong> <span id="details-sitzung">–</span></p>
             </div>
             <h3>Antrag bearbeiten</h3>
             <form id="update-form" style="display:none">
@@ -159,6 +160,12 @@
                 <div class="form-group">
                     <label for="new-tags">Tags aktualisieren (getrennt durch Komma)</label>
                     <input type="text" id="new-tags" name="tags" placeholder="z.B. Dringend,Finanzierung">
+                </div>
+                <div class="form-group">
+                    <label for="new-sitzung">Besprochen in Sitzung</label>
+                    <select id="new-sitzung" name="sitzung_id">
+                        <option value="">– keine –</option>
+                    </select>
                 </div>
                 <button id="update-submit-btn" type="submit">Änderungen speichern</button>
             </form>
@@ -209,6 +216,23 @@
                 </form>
                 <p id="add-tag-message" class="success-message" style="display:none;"></p>
                 <ul id="tags-list"></ul>
+            </div>
+
+            <div class="admin-section">
+                <h3>Sitzungen verwalten</h3>
+                <form id="add-sitzung-form">
+                    <div class="form-group">
+                        <label for="new-sitzung-bezeichnung">Bezeichnung der Sitzung</label>
+                        <input type="text" id="new-sitzung-bezeichnung" placeholder="z.B. Januar-Sitzung 2025" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-sitzung-datum">Datum (optional)</label>
+                        <input type="date" id="new-sitzung-datum">
+                    </div>
+                    <button type="submit">Sitzung hinzufügen</button>
+                </form>
+                <p id="add-sitzung-message" class="success-message" style="display:none;"></p>
+                <ul id="sitzungen-list"></ul>
             </div>
         </div>
     </main>
